@@ -1,0 +1,61 @@
+{"_meta": {"name": "smoke_v0", "kind": "smoke_fixture", "license": "project-internal", "description": "Developer-authored smoke fixture, 10 items x 6 languages. NOT a benchmark; not native-speaker validated."}}
+{"id": "en-01", "lang": "en", "source": "I likes to swimming in the pool.", "references": ["I like to swim in the pool.", "I like swimming in the pool."], "tags": ["error"]}
+{"id": "en-02", "lang": "en", "source": "She don't know nothing about it.", "references": ["She doesn't know anything about it.", "She does not know anything about it."], "tags": ["error"]}
+{"id": "en-03", "lang": "en", "source": "He go to school yesterday.", "references": ["He went to school yesterday."], "tags": ["error"]}
+{"id": "en-04", "lang": "en", "source": "I have two dog and a cat.", "references": ["I have two dogs and a cat."], "tags": ["error"]}
+{"id": "en-05", "lang": "en", "source": "We was very happy to see the the teacher.", "references": ["We were very happy to see the teacher."], "tags": ["error"]}
+{"id": "en-06", "lang": "en", "source": "the meeting starts at 9 am tomorrow.", "references": ["The meeting starts at 9 am tomorrow."], "tags": ["error"]}
+{"id": "en-07", "lang": "en", "source": "i think he is right .", "references": ["I think he is right."], "tags": ["error"]}
+{"id": "en-08", "lang": "en", "source": "The weather is nice today.", "references": ["The weather is nice today."], "tags": ["correct"]}
+{"id": "en-09", "lang": "en", "source": "She did not go to the party with 5 friends.", "references": ["She did not go to the party with 5 friends."], "tags": ["correct"]}
+{"id": "en-10", "lang": "en", "source": "They have been waiting for the bus since morning.", "references": ["They have been waiting for the bus since morning."], "tags": ["correct"]}
+{"id": "hi-01", "lang": "hi", "source": "मैं स्कूल जाती है।", "references": ["मैं स्कूल जाती हूँ।", "मैं स्कूल जाती हूं।"], "tags": ["error"]}
+{"id": "hi-02", "lang": "hi", "source": "राम ने ने खाना खाया।", "references": ["राम ने खाना खाया।"], "tags": ["error"]}
+{"id": "hi-03", "lang": "hi", "source": "वे किताबें पढ़ता है।", "references": ["वे किताबें पढ़ते हैं।"], "tags": ["error"]}
+{"id": "hi-04", "lang": "hi", "source": "लड़कियाँ खेल रहा है।", "references": ["लड़कियाँ खेल रही हैं।"], "tags": ["error"]}
+{"id": "hi-05", "lang": "hi", "source": "मुझे यह किताब बहुत अच्छी लगा।", "references": ["मुझे यह किताब बहुत अच्छी लगी।"], "tags": ["error"]}
+{"id": "hi-06", "lang": "hi", "source": "वह घर जा रहा है |", "references": ["वह घर जा रहा है।"], "tags": ["error"]}
+{"id": "hi-07", "lang": "hi", "source": "उसने ने मुझे बुलाया।", "references": ["उसने मुझे बुलाया।"], "tags": ["error"]}
+{"id": "hi-08", "lang": "hi", "source": "आज मौसम अच्छा है।", "references": ["आज मौसम अच्छा है।"], "tags": ["correct"]}
+{"id": "hi-09", "lang": "hi", "source": "मैं हर रोज़ सुबह जल्दी उठता हूँ।", "references": ["मैं हर रोज़ सुबह जल्दी उठता हूँ।"], "tags": ["correct"]}
+{"id": "hi-10", "lang": "hi", "source": "हम कल दिल्ली जाएँगे।", "references": ["हम कल दिल्ली जाएँगे।"], "tags": ["correct"]}
+{"id": "ko-01", "lang": "ko", "source": "나는 학교을 갑니다.", "references": ["나는 학교에 갑니다."], "tags": ["error"]}
+{"id": "ko-02", "lang": "ko", "source": "한국어는어렵다.", "references": ["한국어는 어렵다."], "tags": ["error"]}
+{"id": "ko-03", "lang": "ko", "source": "저는 어제 친구를 만나요.", "references": ["저는 어제 친구를 만났어요."], "tags": ["error"]}
+{"id": "ko-04", "lang": "ko", "source": "그는 책을 읽어요 .", "references": ["그는 책을 읽어요."], "tags": ["error"]}
+{"id": "ko-05", "lang": "ko", "source": "어제 비가 와요.", "references": ["어제 비가 왔어요."], "tags": ["error"]}
+{"id": "ko-06", "lang": "ko", "source": "저는 커피을 좋아합니다.", "references": ["저는 커피를 좋아합니다."], "tags": ["error"]}
+{"id": "ko-07", "lang": "ko", "source": "동생이 학교가 갑니다.", "references": ["동생이 학교에 갑니다."], "tags": ["error"]}
+{"id": "ko-08", "lang": "ko", "source": "오늘 날씨가 좋습니다.", "references": ["오늘 날씨가 좋습니다."], "tags": ["correct"]}
+{"id": "ko-09", "lang": "ko", "source": "저는 매일 아침 운동을 합니다.", "references": ["저는 매일 아침 운동을 합니다."], "tags": ["correct"]}
+{"id": "ko-10", "lang": "ko", "source": "친구와 함께 도서관에 갔어요.", "references": ["친구와 함께 도서관에 갔어요."], "tags": ["correct"]}
+{"id": "ja-01", "lang": "ja", "source": "私は学校を行きます。", "references": ["私は学校に行きます。"], "tags": ["error"]}
+{"id": "ja-02", "lang": "ja", "source": "昨日友達をを会いました。", "references": ["昨日友達に会いました。"], "tags": ["error"]}
+{"id": "ja-03", "lang": "ja", "source": "明日は雨が降ります.", "references": ["明日は雨が降ります。"], "tags": ["error"]}
+{"id": "ja-04", "lang": "ja", "source": "私は東京,大阪に行きました。", "references": ["私は東京、大阪に行きました。"], "tags": ["error"]}
+{"id": "ja-05", "lang": "ja", "source": "彼は先生がです。", "references": ["彼は先生です。"], "tags": ["error"]}
+{"id": "ja-06", "lang": "ja", "source": "私は日本語が勉強します。", "references": ["私は日本語を勉強します。"], "tags": ["error"]}
+{"id": "ja-07", "lang": "ja", "source": "私はりんごをを食べました。", "references": ["私はりんごを食べました。"], "tags": ["error"]}
+{"id": "ja-08", "lang": "ja", "source": "今日は天気がいいですね。", "references": ["今日は天気がいいですね。"], "tags": ["correct"]}
+{"id": "ja-09", "lang": "ja", "source": "私は毎朝コーヒーを飲みます。", "references": ["私は毎朝コーヒーを飲みます。"], "tags": ["correct"]}
+{"id": "ja-10", "lang": "ja", "source": "友達と一緒に映画を見ました。", "references": ["友達と一緒に映画を見ました。"], "tags": ["correct"]}
+{"id": "te-01", "lang": "te", "source": "నేను నేను ఇంటికి వెళ్తాను.", "references": ["నేను ఇంటికి వెళ్తాను."], "tags": ["error"]}
+{"id": "te-02", "lang": "te", "source": "వారు పుస్తకం చదివాడు.", "references": ["వారు పుస్తకం చదివారు."], "tags": ["error"]}
+{"id": "te-03", "lang": "te", "source": "అతను పాఠశాలకు వెళ్ళింది.", "references": ["అతను పాఠశాలకు వెళ్ళాడు."], "tags": ["error"]}
+{"id": "te-04", "lang": "te", "source": "ఆమె అన్నం తిన్నాడు.", "references": ["ఆమె అన్నం తిన్నది."], "tags": ["error"]}
+{"id": "te-05", "lang": "te", "source": "నేను  రోజూ పాఠశాలకు వెళ్తాను.", "references": ["నేను రోజూ పాఠశాలకు వెళ్తాను."], "tags": ["error"]}
+{"id": "te-06", "lang": "te", "source": "పిల్లలు ఆడుతున్నాడు.", "references": ["పిల్లలు ఆడుతున్నారు."], "tags": ["error"]}
+{"id": "te-07", "lang": "te", "source": "నేను రోజూ పాఠశాలకు వెళ్తాను.", "references": ["నేను రోజూ పాఠశాలకు వెళ్తాను."], "tags": ["correct"]}
+{"id": "te-08", "lang": "te", "source": "ఈ రోజు వాతావరణం బాగుంది.", "references": ["ఈ రోజు వాతావరణం బాగుంది."], "tags": ["correct"]}
+{"id": "te-09", "lang": "te", "source": "మేము రేపు హైదరాబాద్ వెళ్తాము.", "references": ["మేము రేపు హైదరాబాద్ వెళ్తాము."], "tags": ["correct"]}
+{"id": "te-10", "lang": "te", "source": "నాకు తెలుగు చాలా ఇష్టం.", "references": ["నాకు తెలుగు చాలా ఇష్టం."], "tags": ["correct"]}
+{"id": "or-01", "lang": "or", "source": "ମୁଁ ମୁଁ ଘରକୁ ଯାଉଛି ।", "references": ["ମୁଁ ଘରକୁ ଯାଉଛି ।"], "tags": ["error"]}
+{"id": "or-02", "lang": "or", "source": "ସେମାନେ ବହି ପଢ଼େ ।", "references": ["ସେମାନେ ବହି ପଢ଼ନ୍ତି ।"], "tags": ["error"]}
+{"id": "or-03", "lang": "or", "source": "ମୁଁ ସ୍କୁଲକୁ ଯାଉଛି |", "references": ["ମୁଁ ସ୍କୁଲକୁ ଯାଉଛି ।"], "tags": ["error"]}
+{"id": "or-04", "lang": "or", "source": "ଆମେ କାଲି ବଜାରକୁ ଯାଇଥିଲା ।", "references": ["ଆମେ କାଲି ବଜାରକୁ ଯାଇଥିଲୁ ।"], "tags": ["error"]}
+{"id": "or-05", "lang": "or", "source": "ମୋର  ନାମ ରାମ ଅଟେ ।", "references": ["ମୋର ନାମ ରାମ ଅଟେ ।"], "tags": ["error"]}
+{"id": "or-06", "lang": "or", "source": "ପିଲାମାନେ ଖେଳୁଛି ।", "references": ["ପିଲାମାନେ ଖେଳୁଛନ୍ତି ।"], "tags": ["error"]}
+{"id": "or-07", "lang": "or", "source": "ମୁଁ ପ୍ରତିଦିନ ସ୍କୁଲକୁ ଯାଏ ।", "references": ["ମୁଁ ପ୍ରତିଦିନ ସ୍କୁଲକୁ ଯାଏ ।"], "tags": ["correct"]}
+{"id": "or-08", "lang": "or", "source": "ଆଜି ପାଗ ଭଲ ଅଛି ।", "references": ["ଆଜି ପାଗ ଭଲ ଅଛି ।"], "tags": ["correct"]}
+{"id": "or-09", "lang": "or", "source": "ସେ ଏକ ବହି ପଢ଼ୁଛି ।", "references": ["ସେ ଏକ ବହି ପଢ଼ୁଛି ।"], "tags": ["correct"]}
+{"id": "or-10", "lang": "or", "source": "ମୋ ନାମ ରାମ ।", "references": ["ମୋ ନାମ ରାମ ।"], "tags": ["correct"]}

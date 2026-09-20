@@ -1,0 +1,56 @@
+# Full prototype: PostgreSQL + FastAPI backend (Hugging Face models on CPU) + Next.js frontend.
+#   docker compose up --build
+# Models are cached in a volume (or a host folder via HF_CACHE_DIR) and downloaded on first start.
+name: gec-coach
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: gec
+      POSTGRES_PASSWORD: gec
+      POSTGRES_DB: gec
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gec -d gec"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    environment:
+      GEC_DATABASE_URL: postgresql+psycopg://gec:gec@db:5432/gec
+      GEC_JWT_SECRET: ${GEC_JWT_SECRET:-dev-only-change-me-dev-only-change-me}
+      GEC_DEVICE: ${GEC_DEVICE:-auto}
+      GEC_PRELOAD: ${GEC_PRELOAD:-}
+      GEC_LLM_PROVIDER: ${GEC_LLM_PROVIDER:-none}   # optional; default needs no LLM/API key
+      GEC_LLM_BASE_URL: ${GEC_LLM_BASE_URL:-}
+      GEC_LLM_MODEL: ${GEC_LLM_MODEL:-}
+      GEC_LLM_API_KEY: ${GEC_LLM_API_KEY:-}
+      GEC_ALLOWED_ORIGINS: http://localhost:${GEC_WEB_PORT:-3000}
+    volumes:
+      - ${HF_CACHE_DIR:-hf_cache}:/models/hf_cache
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${GEC_API_PORT:-8000}:8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:${GEC_API_PORT:-8000}
+    depends_on:
+      - backend
+    ports:
+      - "${GEC_WEB_PORT:-3000}:3000"
+
+volumes:
+  pgdata:
+  hf_cache:

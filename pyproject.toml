@@ -1,0 +1,81 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multilingual-gec-coach"
+version = "0.1.0"
+description = "Multilingual GEC and fluency-aware learning coach (Telugu, Odia, Hindi, English, Japanese, Korean)"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.6",
+  "pyyaml>=6",
+  "regex>=2024.5",
+  "numpy>=1.26",
+  "httpx>=0.27",
+  "psutil>=5.9",
+]
+
+[project.optional-dependencies]
+# CPU-first. torch is installed from the CPU index (see README); no CUDA-only deps.
+ml = ["torch>=2.3", "transformers>=4.44", "sentencepiece>=0.2", "protobuf>=4", "safetensors>=0.4", "huggingface_hub>=0.24"]
+api = [
+  "fastapi>=0.111", "uvicorn[standard]>=0.30", "sqlalchemy>=2.0", "alembic>=1.13",
+  "psycopg[binary]>=3.1", "pyjwt>=2.8", "python-multipart>=0.0.9",
+]
+dev = ["pytest>=8", "hypothesis>=6", "ruff>=0.5", "import-linter>=2.0", "mypy>=1.10"]
+
+[project.scripts]
+gec-eval = "gec_eval.cli:main"
+gec-api = "gec_api.main:run"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["*.yaml", "*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "models: needs downloaded HF checkpoints (slow, CPU)",
+  "negative: negative / recovery tests",
+]
+addopts = "-m 'not models' -p no:cacheprovider"
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+# ---- Architecture rules (charter: O2 and O3 separate, O5 independent) ----
+[tool.importlinter]
+root_packages = ["gec_common", "gec_o2", "gec_o3", "gec_o4", "gec_eval", "gec_translate", "gec_api"]
+
+[[tool.importlinter.contracts]]
+name = "O2 and O3 are independent (separately testable)"
+type = "independence"
+modules = ["gec_o2", "gec_o3"]
+
+[[tool.importlinter.contracts]]
+name = "Shared kernel imports nothing else"
+type = "forbidden"
+source_modules = ["gec_common"]
+forbidden_modules = ["gec_o2", "gec_o3", "gec_o4", "gec_eval", "gec_translate", "gec_api"]
+
+[[tool.importlinter.contracts]]
+name = "Evaluation (O5) is independent of every system under test"
+type = "forbidden"
+source_modules = ["gec_eval"]
+forbidden_modules = ["gec_o2", "gec_o3", "gec_o4", "gec_api"]
+
+[[tool.importlinter.contracts]]
+name = "O4 coach logic does not depend on a specific corrector"
+type = "forbidden"
+source_modules = ["gec_o4"]
+forbidden_modules = ["gec_o2", "gec_o3", "gec_eval", "gec_api"]
+
+[[tool.importlinter.contracts]]
+name = "Translation is separate from GEC (O2/O3/O4)"
+type = "forbidden"
+source_modules = ["gec_translate"]
+forbidden_modules = ["gec_o2", "gec_o3", "gec_o4", "gec_eval", "gec_api"]

@@ -1,0 +1,94 @@
+# Model registry + per-language capability. Source of truth for what the system CAN and CANNOT do.
+# Sizes/licences were read from the Hugging Face Hub metadata on 2026-09-20; benchmark numbers quoted in
+# model cards are SELF-REPORTED by their authors and have NOT been reproduced by this project.
+# Everything here is CPU-compatible. Nothing depends on a GPU (device: auto -> cpu fallback).
+
+runtime:
+  device: auto            # auto | cpu | cuda
+  max_loaded_models: 3    # LRU of loaded seq2seq models (RAM guard; each model is 0.25-1GB fp32)
+  num_threads: 0          # 0 = torch default
+
+models:
+  en_t5_gec:
+    hf_id: Unbabel/gec-t5_small
+    arch: seq2seq
+    input_prefix: "gec: "
+    license: apache-2.0
+    generate: {num_beams: 5, early_stopping: true}
+    notes: "T5-small trained on CLang-8/CoNLL (English only). Paper-reported F0.5 60.7 on CoNLL-14 (not reproduced here)."
+  ko_kobart_gec:
+    hf_id: Soyoung97/gec_kr
+    arch: seq2seq_kobart
+    input_prefix: ""
+    decode_cleanup: false
+    license: unspecified
+    generate: {num_beams: 4, early_stopping: true, repetition_penalty: 2.0}
+    notes: "KoBART-based Korean GEC. LICENSE NOT SPECIFIED on the Hub: weights are downloaded at runtime only, never redistributed. Verify before any non-research use."
+  hi_indicbart_gec:
+    hf_id: sarthak2314/indicbart-hindi-gec-v1
+    arch: seq2seq_indicbart
+    lang_tag: "<2hi>"
+    decode_cleanup: false
+    license: unspecified
+    generate: {num_beams: 4, early_stopping: true}
+    notes: "IndicBART (MIT base) fine-tuned for Hindi GEC by a community author. Auto-generated card: NO licence, NO documented training data, NO metrics. Verified locally to fix simple agreement/duplication errors but to MISS others. Requires the '<sentence> </s> <2hi>' format; the plain format produces runaway repetition."
+  mlm_detector:
+    hf_id: FacebookAI/xlm-roberta-base
+    arch: mlm
+    license: mit
+    notes: "Masked-LM used for detection-only flags in all six languages. Thresholds are uncalibrated heuristics."
+  embedder:
+    hf_id: intfloat/multilingual-e5-small
+    arch: embedder
+    input_prefix: "query: "
+    license: mit
+    notes: "Multilingual sentence embedder for the meaning-preservation gate (covers te/or/hi/ja/ko/en per model card)."
+
+  translator:
+    hf_id: facebook/nllb-200-distilled-600M
+    arch: translation
+    optional: true          # not needed for GEC; downloaded only on request (scripts/download_models.py translator)
+    license: cc-by-nc-4.0   # NON-COMMERCIAL licence: fine for a research prototype, verify before any product use
+    notes: "NLLB-200 distilled 600M: one model covering all six languages (tel_Telu, ory_Orya, hin_Deva, eng_Latn, jpn_Jpan, kor_Hang). Loaded in bfloat16 on CPU. Translation is SEPARATE from GEC."
+
+languages:
+  en:
+    capability: seq2seq_gec
+    generator: en_t5_gec
+    summary: "Neural GEC (T5-small trained on English GEC corpora) + rule normalisation."
+    limitations: ["Small model: modest recall; over-correction possible (controlled by O3 gates)."]
+  ko:
+    capability: seq2seq_gec
+    generator: ko_kobart_gec
+    summary: "Neural GEC (KoBART) + rule normalisation."
+    limitations: ["Model licence unspecified on the Hub.", "Trained largely on learner/typo-style data; register changes possible."]
+  hi:
+    capability: seq2seq_gec
+    generator: hi_indicbart_gec
+    summary: "Neural GEC (IndicBART fine-tuned for Hindi, community checkpoint) + rule normalisation + MLM detection."
+    limitations: ["Checkpoint has NO licence, NO documented training data and NO published metrics.", "Verified only on a handful of sentences: it fixes some agreement/duplication errors and misses others (e.g. plural subject with singular verb).", "Devanagari text is assumed Hindi (Marathi/Nepali share the script)."]
+  te:
+    capability: rules_and_detection
+    generator: null
+    summary: "No working GEC checkpoint. Rule-based fixes + XLM-R masked-LM error DETECTION (flags only)."
+    limitations: ["Two candidate checkpoints were tested and REJECTED: Rucha-Ambaliya/mt5-small-indic-gec (Hindi-trained; produced duplicated/garbled Telugu) and IndicBART-Hindi zero-shot (empty output).", "No Telugu-trained GEC model exists on the Hub (surveyed 2026-09-20).", "Rules cover punctuation/duplication/spacing only; MLM flags are detection-only and uncalibrated."]
+  ja:
+    capability: rules_and_detection
+    generator: null
+    summary: "No GEC checkpoint available. Rule-based fixes + XLM-R masked-LM error DETECTION (flags only)."
+    limitations: ["No verified Japanese GEC model found on the Hub (surveyed 2026-09-20).", "Rules cover punctuation/duplication/spacing only.", "MLM flags are detection-only and uncalibrated."]
+  or:
+    capability: rules_and_detection
+    generator: null
+    summary: "No GEC checkpoint available. Rule-based fixes + XLM-R masked-LM error DETECTION (flags only)."
+    limitations: ["No Odia GEC model exists on the Hub (surveyed 2026-09-20).", "XLM-R Odia pre-training data is small: detection quality is likely poor.", "Rules cover punctuation/duplication/spacing only."]
+
+thresholds:  # UNCALIBRATED defaults. No human-labelled data exists yet. min_no_change_margin=0.10 was chosen by INSPECTING TWO examples (Korean spurious edit gap 0.093, Hindi true fix gap 0.157): a weak basis, to be revisited with gold data.
+  detector:
+    min_orig_prob: 0.0005       # flag token if p(original | context) below this ...
+    min_top_prob: 0.30          # ... and the MLM's top prediction is at least this confident
+    max_flags: 8
+  o3:
+    minimal:  {max_edit_ratio: 0.35, min_support: 0.25, min_no_change_margin: 0.10, allow_word_choice: false, min_edit_similarity: 0.90, min_sentence_similarity: 0.93}
+    fluency:  {max_edit_ratio: 0.60, min_support: 0.25, min_no_change_margin: 0.0, allow_word_choice: true, min_edit_similarity: 0.85, min_sentence_similarity: 0.88}
+    nbest: 4

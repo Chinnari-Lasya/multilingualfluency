@@ -1,0 +1,107 @@
+# Rule-grounded explanation templates (O4). Written in English for the learner UI, quoting target-language forms.
+# STATUS: developer-authored v0. NOT reviewed by native-speaker educators (no independent educator is available yet).
+# Lookup order: rule_id -> "<lang>.<error_type>" -> "*.<error_type>" -> "*.OTHER".
+# Placeholders: {change} (e.g. "'X' -> 'Y'", "add 'Y'", "remove 'X'"), {original}, {replacement}.
+version: explain_templates_v0
+
+templates:
+  # ---- generic (language-agnostic) ----
+  "*.PUNCT":
+    why: "Punctuation marks the boundaries of clauses and sentences. Suggested change: {change}."
+    tip: "Check the sentence-final mark and the spacing around punctuation for this language."
+  "*.SPACING":
+    why: "Spacing between words was irregular. Suggested change: {change}."
+    tip: "Use a single space between words (Japanese does not use spaces between words)."
+  "*.ORTH":
+    why: "A capitalisation/orthography convention was not followed. Suggested change: {change}."
+    tip: "Re-check the writing convention for this word."
+  "*.SPELLING":
+    why: "The word looks misspelled; the suggested form differs by only a character or two. Suggested change: {change}."
+    tip: "Read the word letter by letter (or syllable by syllable) and compare it with a dictionary form."
+  "*.MORPHOLOGY":
+    why: "The word ending (inflection) does not fit its context. Suggested change: {change}."
+    tip: "Ask which grammatical features the ending must express here: person, number, gender, case or tense."
+  "*.MISSING":
+    why: "A word or particle seems to be missing. Suggested change: {change}."
+    tip: "Re-read the sentence and check that every part has its required function word or ending."
+  "*.UNNECESSARY":
+    why: "A word or particle seems unnecessary here. Suggested change: {change}."
+    tip: "Repeated or extra words often come from editing; remove what the sentence does not need."
+  "*.WORD_CHOICE":
+    why: "A different word may fit the context better. Suggested change: {change}."
+    tip: "Word-choice edits can change nuance: check that the new word still says what you mean."
+  "*.OTHER":
+    why: "The system suggests a change here: {change}."
+    tip: "Review the suggestion and decide whether it matches your intended meaning."
+
+  # ---- English ----
+  en.DET:
+    why: "Articles (a / an / the) show whether a noun is specific or general. Suggested change: {change}."
+    tip: "Use 'a/an' for a singular countable noun mentioned for the first time, and 'the' for something already known or unique."
+  en.PREP:
+    why: "Prepositions are tied to particular verbs, nouns and time/place expressions. Suggested change: {change}."
+    tip: "Learn the preposition together with its partner word, for example 'interested in', 'on Monday', 'at 5 pm'."
+  en.VERB_FORM:
+    why: "The verb form must agree with the subject and tense. Suggested change: {change}."
+    tip: "Check the subject: he/she/it takes 'is/has/does', while I/you/we/they take 'am-are/have/do'."
+  en.VERB_OR_NOUN_FORM:
+    why: "The ending changes the word's grammatical role (-s, -ed, -ing). Suggested change: {change}."
+    tip: "-s marks third-person singular verbs and plural nouns; -ed marks the past; -ing marks continuous forms."
+  pronoun_i:
+    why: "The English pronoun 'I' is always written as a capital letter. Suggested change: {change}."
+    tip: "Capitalise 'I' everywhere, including in contractions such as 'I'm'."
+  dup_word:
+    why: "A function word is repeated by accident. Suggested change: {change}."
+    tip: "Look for accidental repeats after editing or copy-pasting."
+  space_before_punct:
+    why: "In English, punctuation attaches directly to the preceding word. Suggested change: {change}."
+    tip: "No space before . , ; : ! ?"
+  space_after_comma:
+    why: "A comma is followed by a space. Suggested change: {change}."
+    tip: "Write 'word, word' rather than 'word,word'."
+  dup_space:
+    why: "Several spaces were used where one is enough. Suggested change: {change}."
+    tip: "One space between words."
+
+  # ---- Hindi ----
+  hi.POSTPOSITION:
+    why: "Hindi uses postpositions (ने, को, से, में, पर, का/की/के) after the noun. Suggested change: {change}."
+    tip: "'ने' marks the subject of a transitive verb in the past (perfective); का/की/के agree with the gender and number of the thing possessed."
+  hi.AGREEMENT:
+    why: "Hindi verbs and auxiliaries agree with the subject in gender, number and person. Suggested change: {change}."
+    tip: "Compare मैं जाती हूँ (I, feminine) with वह जाता है (he); check the ending (-ता/-ती/-ते) and the auxiliary (हूँ/है/हैं/हो)."
+  danda_pipe:
+    why: "In Hindi and Odia the full stop is the danda '।' (U+0964), not the ASCII bar '|'. Suggested change: {change}."
+    tip: "Use the danda '।' to end sentences."
+
+  # ---- Japanese ----
+  ja.PARTICLE:
+    why: "Japanese particles mark the grammatical role of a word. Suggested change: {change}."
+    tip: "は = topic, が = subject, を = direct object, に = destination/time, で = place of action or means, へ = direction. Verbs of motion such as 行く take their destination with に or へ, not を."
+  ja.PARTICLE_MISSING_OR_EXTRA:
+    why: "A particle appears to be missing or superfluous. Suggested change: {change}."
+    tip: "Check that each noun phrase has the particle its verb requires, and that no particle is doubled."
+  ja_dup_wo:
+    why: "The particle を is doubled, which is never valid. Suggested change: {change}."
+    tip: "Keep a single を after the direct object."
+  ja_ascii_punct:
+    why: "Japanese text normally uses the full-width marks 、 and 。 rather than ASCII , and . Suggested change: {change}."
+    tip: "Use 、 (comma) and 。 (full stop) in Japanese sentences."
+
+  # ---- Korean ----
+  ko.JOSA:
+    why: "Korean particles (조사) attach to nouns, and their form depends on the noun's final sound. Suggested change: {change}."
+    tip: "After a consonant (받침) use 은/이/을/과; after a vowel use 는/가/를/와."
+  ko.JOSA_MISSING_OR_EXTRA:
+    why: "A particle appears to be missing or superfluous. Suggested change: {change}."
+    tip: "Check that the noun has the particle its role in the sentence needs (topic, subject, object, place)."
+
+  # ---- Telugu (zero-shot model: treat suggestions as low-confidence) ----
+  te.SUFFIX_AGREEMENT:
+    why: "Telugu is agglutinative: case, tense and person are expressed by suffixes on the word stem. Suggested change: {change}."
+    tip: "The suffix must agree with the subject (person, number, gender) and with the tense. This suggestion came from a zero-shot model, so double-check it."
+
+  # ---- Odia ----
+  or.SUFFIX_OR_POSTPOSITION:
+    why: "Odia marks case with suffixes/postpositions such as -କୁ (to), -ରେ (in/at), -ର (of). Suggested change: {change}."
+    tip: "Choose the marker that matches the verb and the meaning."
