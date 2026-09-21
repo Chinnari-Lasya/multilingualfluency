@@ -1,6 +1,8 @@
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 HF_HOME=/models/hf_cache GEC_HOME=/models GEC_CONFIG_DIR=/app/configs
+# Production-safe default: do NOT seed the demo learner/educator/admin accounts (password "demo"). Override with 1 for local Docker.
+ENV GEC_SEED_DEMO_USERS=0
 WORKDIR /app
 
 # CPU-only PyTorch (no CUDA dependency; the system falls back to CPU by design)

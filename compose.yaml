@@ -27,6 +27,7 @@ services:
       GEC_JWT_SECRET: ${GEC_JWT_SECRET:-dev-only-change-me-dev-only-change-me}
       GEC_DEVICE: ${GEC_DEVICE:-auto}
       GEC_PRELOAD: ${GEC_PRELOAD:-}
+      GEC_SEED_DEMO_USERS: ${GEC_SEED_DEMO_USERS:-1}   # local compose keeps demo accounts; production leaves this at 0
       GEC_LLM_PROVIDER: ${GEC_LLM_PROVIDER:-none}   # optional; default needs no LLM/API key
       GEC_LLM_BASE_URL: ${GEC_LLM_BASE_URL:-}
       GEC_LLM_MODEL: ${GEC_LLM_MODEL:-}

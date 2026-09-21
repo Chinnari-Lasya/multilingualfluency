@@ -98,7 +98,10 @@ def require(*roles: str):
 
 
 def seed_demo_users() -> None:
-    """DEMO ACCOUNTS ONLY (local prototype). None of them is an independent educator."""
+    """DEMO ACCOUNTS ONLY (local prototype). None of them is an independent educator.
+    On by default for local development; production sets GEC_SEED_DEMO_USERS=0 (the backend Docker image does)."""
+    if os.environ.get("GEC_SEED_DEMO_USERS", "1").strip().lower() in ("0", "false", "no", "off"):
+        return
     with dbm.SessionLocal() as s:
         if s.scalar(select(dbm.User).limit(1)):
             return
