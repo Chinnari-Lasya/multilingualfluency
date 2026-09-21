@@ -22,6 +22,7 @@ function Form({ mode }: { mode: "signin" | "signup" }) {
   const [confirm, setC] = useState("");
   const [name, setN] = useState("");
   const [role, setRole] = useState<Role>("learner");
+  const [invite, setInvite] = useState("");
   const [lang, setLang] = useState<string>(locale);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -51,7 +52,7 @@ function Form({ mode }: { mode: "signin" | "signup" }) {
     try {
       const u = mode === "signin"
         ? await login(identifier, password)
-        : await register({ name, username: identifier, password, confirm_password: confirm, role, preferred_language: lang });
+        : await register({ name, username: identifier, password, confirm_password: confirm, role, preferred_language: lang, ...(role === "educator" && invite.trim() ? { invite_code: invite.trim() } : {}) });
       router.replace(mode === "signin" && next && next.startsWith("/") ? next : homeFor(u.role));
     } catch (x) { setErr(errText(x)); } finally { setBusy(false); }
   }
@@ -81,6 +82,7 @@ function Form({ mode }: { mode: "signin" | "signup" }) {
               <div><label htmlFor="l">{t("auth.prefLang")}</label>
                 <select id="l" value={lang} onChange={(e) => { setLang(e.target.value); setLangTouched(true); }}>{LOCALES.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}</select></div>
             </div>
+            {role === "educator" && (<><label htmlFor="ic">{t("auth.inviteCode")}</label><input id="ic" autoComplete="off" value={invite} onChange={(e) => setInvite(e.target.value)} maxLength={128} /></>)}
             <p className="muted small">{t("auth.protoRole")}</p>
           </>
         )}

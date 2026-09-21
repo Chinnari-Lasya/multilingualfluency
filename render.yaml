@@ -30,8 +30,15 @@ services:
         generateValue: true
       - key: GEC_SEED_DEMO_USERS
         value: "0"                 # never seed learner/educator/admin demo accounts in production
+      - key: GEC_DOWNLOAD_TRANSLATOR
+        value: "1"                 # also download the NLLB translator (~2.5 GB) into the /models disk on first start
       - key: GEC_ALLOW_ROLE_SELF_SELECT
-        value: "0"                 # public sign-up creates learners only; set to 1 to allow educator/admin self-selection
+        value: "0"                 # keep 0 in production: Admin is NEVER self-created (see the note below)
+      - key: GEC_EDUCATOR_INVITE_CODE
+        sync: false                # secret: educators must enter this code at sign-up. 24+ random chars. Give it only to educators.
+      # ADMIN: there is no admin sign-up in production. Register the account as a learner, then promote it once in the
+      # database (Render dashboard -> gec-db -> Connect -> PSQL command):
+      #   UPDATE users SET role='admin' WHERE username='<the exact username/email you registered>';
       - key: GEC_ALLOWED_ORIGINS
         sync: false                # the frontend's public URL, e.g. https://gec-coach-web.onrender.com (no trailing slash)
       - key: GEC_LLM_PROVIDER

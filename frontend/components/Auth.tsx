@@ -5,7 +5,7 @@ import { api, ApiError, post, tokenStore, UNAUTH_EVENT, type Role, type User } f
 import { useI18n } from "@/lib/i18n";
 import { LOCALES, type Locale } from "@/lib/messages";
 
-export interface RegisterForm { name: string; username: string; password: string; confirm_password: string; role: Role; preferred_language: string }
+export interface RegisterForm { name: string; username: string; password: string; confirm_password: string; role: Role; preferred_language: string; invite_code?: string }
 
 export const homeFor = (role: Role) => (role === "educator" ? "/educator" : role === "admin" ? "/evaluation" : "/coach");
 

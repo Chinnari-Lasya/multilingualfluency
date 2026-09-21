@@ -154,6 +154,7 @@ class RegisterIn(BaseModel):
     confirm_password: str | None = None
     role: Literal["learner", "educator", "admin"] = "learner"
     preferred_language: str = "en"
+    invite_code: str | None = None  # educator sign-up only, when GEC_EDUCATOR_INVITE_CODE is configured
 
 
 class PrefsIn(BaseModel):
@@ -271,8 +272,14 @@ def register(body: RegisterIn, db=Depends(get_db)):
         raise AuthError("password_mismatch", "Passwords do not match", 422)
     if body.preferred_language not in LANGUAGES:
         raise AuthError("unsupported_language", "Unsupported language", 422)
-    if body.role != "learner" and os.environ.get("GEC_ALLOW_ROLE_SELF_SELECT", "1") != "1":
-        raise AuthError("forbidden", "Educator and admin accounts are provisioned by an administrator", 403)
+    if body.role != "learner":
+        educator_code = os.environ.get("GEC_EDUCATOR_INVITE_CODE", "")
+        if body.role == "educator" and educator_code:
+            # hosted deployment: educators need the invite code. Admin is never self-created here (see below).
+            if not hmac.compare_digest((body.invite_code or "").encode(), educator_code.encode()):
+                raise AuthError("invalid_invite_code", "Invalid or missing invite code", 403)
+        elif os.environ.get("GEC_ALLOW_ROLE_SELF_SELECT", "1") != "1":
+            raise AuthError("forbidden", "Educator and admin accounts are provisioned by an administrator", 403)
     if db.scalar(select(dbm.User).where(dbm.User.username == login_id)):
         raise AuthError("username_taken", "That username or email is already registered", 409)
     u = dbm.User(username=login_id, password_hash=hash_pw(body.password), role=body.role, display_name=name[:64],

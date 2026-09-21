@@ -23,6 +23,7 @@ const en: Dict = {
   "auth.submit.signin": "Sign in", "auth.submit.signup": "Sign up", "auth.noAccount": "No account yet?", "auth.haveAccount": "Already registered?",
   "auth.demo": "Demo accounts (password “demo”). None is an independent educator, so nothing they do counts as educator validation.",
   "auth.working": "Please wait…", "auth.signedOut": "You have been signed out.", "auth.needSignin": "Please sign in to continue.", "auth.wrongRole": "This page is not available for your role ({role}).",
+  "auth.inviteCode": "Educator invite code (only needed on the hosted site)", "err.invalid_invite_code": "That invite code is missing or incorrect.",
   "err.unauthorized": "Your session has expired. Please sign in again.", "err.forbidden": "You do not have permission to do that.",
   "err.invalid_credentials": "Wrong username or password.", "err.username_taken": "That username is already taken.",
   "err.weak_password": "Password must be at least 8 characters.", "err.invalid_username": "Username must be 3–32 characters: letters, digits, underscore.",
