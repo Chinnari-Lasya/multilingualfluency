@@ -1,0 +1,54 @@
+# Render Blueprint: PostgreSQL + FastAPI backend (Docker, persistent model disk) + Next.js frontend.
+# Reuses docker/backend.Dockerfile unchanged. Local development is unaffected (see compose.yaml / README).
+# Values marked `sync: false` are prompted for when the Blueprint is applied (never stored in git).
+
+databases:
+  - name: gec-db
+    databaseName: gec
+    user: gec
+    plan: basic-256mb
+
+services:
+  # ------------------------------------------------------------------ backend / API
+  - type: web
+    name: gec-coach-api
+    runtime: docker
+    dockerfilePath: ./docker/backend.Dockerfile
+    dockerContext: .
+    plan: pro                      # 4 GB RAM: PyTorch + up to 3 loaded seq2seq models + XLM-R + embedder
+    healthCheckPath: /api/v1/health
+    disk:
+      name: gec-models
+      mountPath: /models           # GEC_HOME=/models and HF_HOME=/models/hf_cache are set in the Dockerfile
+      sizeGB: 20
+    envVars:
+      - key: PORT
+        value: "8000"              # the Dockerfile CMD binds 8000
+      - key: GEC_DATABASE_URL
+        sync: false                # postgresql+psycopg://USER:PASSWORD@HOST:5432/gec  (see instructions: note the "+psycopg")
+      - key: GEC_JWT_SECRET
+        generateValue: true
+      - key: GEC_SEED_DEMO_USERS
+        value: "0"                 # never seed learner/educator/admin demo accounts in production
+      - key: GEC_ALLOW_ROLE_SELF_SELECT
+        value: "0"                 # public sign-up creates learners only; set to 1 to allow educator/admin self-selection
+      - key: GEC_ALLOWED_ORIGINS
+        sync: false                # the frontend's public URL, e.g. https://gec-coach-web.onrender.com (no trailing slash)
+      - key: GEC_LLM_PROVIDER
+        value: none
+
+  # ------------------------------------------------------------------ frontend
+  - type: web
+    name: gec-coach-web
+    runtime: node
+    rootDir: frontend
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npx next start -p $PORT   # package.json's `start` is hard-wired to 3000; Render assigns $PORT
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: NEXT_PUBLIC_API_URL
+        sync: false                # the backend's public URL, e.g. https://gec-coach-api.onrender.com (no trailing slash)
