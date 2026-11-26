@@ -45,7 +45,17 @@ services:
       - key: GEC_ALLOWED_ORIGINS
         sync: false                # the frontend's public URL, e.g. https://gec-coach-web.onrender.com (no trailing slash)
       - key: GEC_LLM_PROVIDER
-        value: none
+        value: none                # grammar explanations stay rule/template-based (no LLM)
+      # TRANSLATION: the local NLLB model cannot run on the free plan (no PyTorch, 512 MB), so translation is sent
+      # to Groq's free OpenAI-compatible API. Only translation uses it (GEC_LLM_PROVIDER above stays none).
+      - key: GEC_TRANSLATION_PROVIDER
+        value: openai_compatible
+      - key: GEC_LLM_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: GEC_LLM_MODEL
+        value: llama-3.3-70b-versatile   # any chat model listed at console.groq.com/docs/models
+      - key: GEC_LLM_API_KEY
+        sync: false                # secret: your free key from console.groq.com/keys (starts with gsk_)
 
   # ------------------------------------------------------------------ frontend
   - type: web
