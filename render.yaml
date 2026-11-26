@@ -46,8 +46,12 @@ services:
         sync: false                # the frontend's public URL, e.g. https://gec-coach-web.onrender.com (no trailing slash)
       - key: GEC_LLM_PROVIDER
         value: none                # grammar explanations stay rule/template-based (no LLM)
-      # TRANSLATION: the local NLLB model cannot run on the free plan (no PyTorch, 512 MB), so translation is sent
-      # to Google Gemini's free OpenAI-compatible API. Only translation uses it (GEC_LLM_PROVIDER above stays none).
+      # TRANSLATION + CORRECTION FALLBACK: the local models cannot run on the free plan (no PyTorch, 512 MB), so
+      # translation, and O2/O3 correction plus O3's meaning check, use Google Gemini's free OpenAI-compatible API.
+      # Every such result is labelled engine=llm_fallback in the UI and trace. GEC_LLM_PROVIDER above (explanations)
+      # stays none. Set GEC_LLM_FALLBACK=off to go back to rules-only correction.
+      - key: GEC_LLM_FALLBACK
+        value: auto
       - key: GEC_TRANSLATION_PROVIDER
         value: openai_compatible
       - key: GEC_LLM_BASE_URL

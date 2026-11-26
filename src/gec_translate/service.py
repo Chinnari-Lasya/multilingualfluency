@@ -19,6 +19,7 @@ from gec_common.config import model_spec
 from gec_common.errors import (InvalidInputError, ModelUnavailableError, SameLanguageError,
                                TranslationUnavailableError, UnsupportedLanguageError)
 from gec_common.langs import LANGUAGES, get_language
+from gec_common.llm_fallback import describe_http_error
 from gec_common.runtime import get_translator
 from gec_common.text import normalize, split_sentences
 
@@ -65,9 +66,13 @@ class OpenAICompatibleProvider:
     name = "openai_compatible"
 
     def __init__(self, transport: httpx.BaseTransport | None = None) -> None:
-        self.base = os.environ.get("GEC_LLM_BASE_URL", "").rstrip("/")
-        self.model = os.environ.get("GEC_LLM_MODEL", "")
-        self.key = os.environ.get("GEC_LLM_API_KEY", "")
+        # tolerate values pasted with surrounding spaces/quotes or a trailing slash
+        def clean(k: str) -> str:
+            return os.environ.get(k, "").strip().strip("'\"").strip()
+
+        self.base = clean("GEC_LLM_BASE_URL").rstrip("/")
+        self.model = clean("GEC_LLM_MODEL")
+        self.key = clean("GEC_LLM_API_KEY")
         self._transport = transport
         if not (self.base and self.model):
             raise TranslationUnavailableError("openai_compatible provider needs GEC_LLM_BASE_URL and GEC_LLM_MODEL")
@@ -76,13 +81,18 @@ class OpenAICompatibleProvider:
         prompt = (f"Translate the following {LANGUAGES[src].name} text into {LANGUAGES[tgt].name}. "
                   f"Output only the translation.\n\n{text}")
         try:
-            with httpx.Client(timeout=30, transport=self._transport) as c:
+            with httpx.Client(timeout=45, transport=self._transport) as c:
                 r = c.post(f"{self.base}/chat/completions", headers={"Authorization": f"Bearer {self.key}"} if self.key else {},
                            json={"model": self.model, "temperature": 0, "messages": [{"role": "user", "content": prompt}]})
             r.raise_for_status()
-            return r.json()["choices"][0]["message"]["content"].strip()
-        except (httpx.HTTPError, KeyError, IndexError, ValueError) as e:
-            raise TranslationUnavailableError(f"Translation provider call failed: {type(e).__name__}") from e
+            content = r.json()["choices"][0]["message"]["content"]
+            if not content or not str(content).strip():
+                raise TranslationUnavailableError(f"Translation provider ({self.model}) returned an empty answer")
+            return str(content).strip()
+        except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as e:
+            # say WHY (status + the provider's own message, e.g. "API key not valid"), never the key itself
+            raise TranslationUnavailableError(
+                f"Translation provider call failed ({self.model}): {describe_http_error(e)}") from e
 
 
 def get_provider() -> TranslationProvider:

@@ -336,7 +336,7 @@ def _run_out(run: dbm.CorrectionRun) -> dict:
             **run.meta}
 
 
-_META_KEYS = ("language_detection", "capability", "warnings", "trace", "model_ids", "flags", "abstained",
+_META_KEYS = ("language_detection", "capability", "warnings", "trace", "model_ids", "flags", "abstained", "engine",
               "abstain_reason", "assessment")
 
 

@@ -19,7 +19,7 @@ export interface Assessment {
 export interface Capability { language: string; level: string; model_id: string | null; summary: string; limitations: string[]; license_note?: string | null }
 export interface Run {
   run_id: number | null; submission_id?: number; pipeline: "o2" | "o3"; mode: string; language: string; source: string; corrected: string;
-  degraded: boolean; abstained: boolean; abstain_reason?: string | null; latency_ms: number; edits: Edit[]; flags?: Flag[];
+  degraded: boolean; engine?: "local" | "llm_fallback" | "rules_only" | "none"; abstained: boolean; abstain_reason?: string | null; latency_ms: number; edits: Edit[]; flags?: Flag[];
   assessment?: Assessment; capability?: Capability; warnings?: string[]; model_ids?: Record<string, string>;
   trace?: { stage: string; status: string; ms: number; detail?: string | null }[];
 }

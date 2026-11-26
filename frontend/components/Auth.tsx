@@ -19,11 +19,17 @@ interface AuthCtx {
 const Ctx = createContext<AuthCtx>({ user: null, ready: false, login: async () => { throw new Error("no provider"); }, register: async () => { throw new Error("no provider"); }, logout: async () => {}, savePreferredLanguage: () => {} });
 export const useAuth = () => useContext(Ctx);
 
+// Server-side failures whose backend message carries the real cause (e.g. "HTTP 400 ...: API key not valid").
+const SHOW_SERVER_DETAIL = new Set(["translation_unavailable", "model_unavailable", "generic", "error"]);
+
 /** Translate any error into a user-facing message in the current UI language. */
 export function useErrText() {
   const { t, tx } = useI18n();
   return (e: unknown) => {
-    if (e instanceof ApiError) return tx(`err.${e.code}`, t("err.generic"));
+    if (e instanceof ApiError) {
+      const base = tx(`err.${e.code}`, t("err.generic"));
+      return SHOW_SERVER_DETAIL.has(e.code) && e.message ? `${base} ${e.message}` : base;
+    }
     return t("err.generic");
   };
 }

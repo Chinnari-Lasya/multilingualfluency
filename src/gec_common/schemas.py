@@ -78,6 +78,9 @@ class CorrectionResult(BaseModel):
     flags: list[Flag] = Field(default_factory=list)
     capability: CapabilityInfo | None = None
     degraded: bool = False
+    # which correction engine produced the edits: "local" (the configured checkpoint), "llm_fallback" (local model
+    # unavailable; GEC_LLM_* endpoint used), "rules_only" (O2 rules, no generator) or "none" (O3, no generator)
+    engine: str = "local"
     abstained: bool = False  # O3: meaning preservation uncertain -> no edit applied
     abstain_reason: str | None = None
     assessment: dict = Field(default_factory=dict)  # meaning-preservation + over-correction status (composition root)

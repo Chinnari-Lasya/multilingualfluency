@@ -22,7 +22,7 @@ from gec_common.align import apply_edits, extract_edits, tokenize
 from gec_common.config import language_capability, load_models_config, thresholds
 from gec_common.errors import ModelUnavailableError
 from gec_common.langs import get_language, resolve_language
-from gec_common.runtime import get_embedder, get_seq2seq, script_consistent
+from gec_common.runtime import get_generator, get_meaning_checker, script_consistent
 from gec_common.schemas import CapabilityInfo, CorrectionResult, Edit, Mode, StageTrace
 from gec_common.text import normalize, split_sentences
 
@@ -51,14 +51,22 @@ class O3Controlled:
         return language_capability(get_language(lang).code)
 
     def _emb(self):
-        return self._embedder or get_embedder()
+        # local E5 embedder when it loads; else the LLM meaning judge (labelled in the trace) if configured
+        self._emb_used = self._embedder or get_meaning_checker()
+        return self._emb_used
+
+    @staticmethod
+    def _similarities(emb, pairs: list[tuple[str, str]]) -> list[float]:
+        if hasattr(emb, "similarity_many"):  # the LLM judge scores all pairs in one call
+            return emb.similarity_many(pairs)
+        return [emb.similarity(a, b) for a, b in pairs]
 
     # ---- per-sentence -------------------------------------------------------------------------------
-    def _process_sentence(self, sent: str, offset: int, lang: str, gen_key: str, mode: str,
-                          warnings: list[str]) -> list[Edit]:
+    def _process_sentence(self, sent: str, offset: int, lang: str, gen_key: str | None, mode: str,
+                          warnings: list[str], m=None) -> list[Edit]:
         th = thresholds("o3")[mode]
         n_best = int(thresholds("o3")["nbest"])
-        m = get_seq2seq(gen_key)
+        is_llm = bool(getattr(m, "is_llm", False))
         if m.token_len(sent) > m.max_input_tokens:
             warnings.append("A sentence exceeded the model input limit and was left unchanged.")
             return []
@@ -73,8 +81,9 @@ class O3Controlled:
         best = valid[0]
         # No-change margin: how much more does the MODEL prefer its edit over leaving the sentence alone?
         # (None = the unchanged sentence is not among the n-best, i.e. clearly worse than the edit.)
+        # An LLM exposes no sequence scores, so the margin cannot be computed for it (gap stays None).
         unchanged = next((c for c in valid if c.text == sent), None)
-        gap = None if unchanged is None else best.score - unchanged.score
+        gap = None if unchanged is None or not getattr(m, "has_scores", True) else best.score - unchanged.score
         proposals = extract_edits(sent, best.text, lang)
         if not proposals:
             return []
@@ -85,13 +94,15 @@ class O3Controlled:
         emb = self._emb()
         tokens_total = max(1, len(tokenize(sent, lang)))
         scored: list[Edit] = []
-        for e in proposals:
-            e.source = f"model:{gen_key}"
+        variants = [apply_edits(sent, [e]) for e in proposals]
+        # the all-proposals output rides along so the usual whole-sentence check below is already scored
+        sims = self._similarities(emb, [(sent, v) for v in variants] + [(sent, apply_edits(sent, proposals))])
+        for e, edited, sim in zip(proposals, variants, sims):
+            e.source = f"llm:{m.model}" if is_llm else f"model:{gen_key}"
             support = keys[(e.start, e.end, e.replacement)] / len(valid)
-            edited = apply_edits(sent, [e])
-            sim = emb.similarity(sent, edited)
-            e.scores = {"support": round(support, 3), "edit_similarity": round(sim, 4),
-                        "seq_prob": round(math.exp(best.score), 4)}
+            e.scores = {"support": round(support, 3), "edit_similarity": round(sim, 4)}
+            if not is_llm:  # an LLM gives no sequence probability: record none rather than a fake one
+                e.scores["seq_prob"] = round(math.exp(best.score), 4)
             if gap is not None:
                 e.scores["no_change_gap"] = round(gap, 4)
             reason = None
@@ -125,7 +136,7 @@ class O3Controlled:
         accepted = [x for x in scored if x.gate_status == "accepted"]
         if accepted:
             out = apply_edits(sent, accepted)
-            ssim = emb.similarity(sent, out)
+            ssim = self._similarities(emb, [(sent, out)])[0]
             if ssim < th["min_sentence_similarity"]:
                 for x in accepted:
                     x.gate_status = "rejected"
@@ -151,7 +162,16 @@ class O3Controlled:
         degraded = False
         model_ids: dict[str, str] = {}
 
-        if gen_key is None:
+        # local checkpoint if it loads; otherwise the configured LLM fallback (None = neither exists for lang)
+        gen, gen_err = None, None
+        try:
+            gen = get_generator(gen_key, lang)
+        except ModelUnavailableError as e:
+            gen_err = e
+        is_llm = bool(getattr(gen, "is_llm", False))
+        engine = "llm_fallback" if is_llm else "local" if gen is not None else "none"
+        self._emb_used = None
+        if gen is None and gen_err is None:
             trace.append(StageTrace(stage="generator", status="skipped",
                                     detail=f"O3 has no generator for {lang}; text returned unchanged"))
             warnings.append(f"O3 cannot correct {lang}: no GEC checkpoint exists. Output is the unchanged source.")
@@ -159,16 +179,36 @@ class O3Controlled:
             t0 = time.perf_counter()
             spans = split_sentences(text)[:MAX_SENTENCES]
             try:
+                if gen_err is not None:
+                    raise gen_err
                 for a, b in spans:
-                    edits.extend(self._process_sentence(text[a:b], a, lang, gen_key, mode, warnings))
-                model_ids["generator"] = load_models_config()["models"][gen_key]["hf_id"]
-                model_ids["meaning_embedder"] = load_models_config()["models"]["embedder"]["hf_id"]
-                trace.append(StageTrace(stage="generate+gate", status="ok", ms=round((time.perf_counter() - t0) * 1000, 1)))
+                    edits.extend(self._process_sentence(text[a:b], a, lang, gen_key, mode, warnings, m=gen))
+                checker = self._emb_used
+                if is_llm:
+                    model_ids["generator"] = gen.hf_id
+                    warnings.append(f"LLM fallback used: candidates come from {gen.model} via GEC_LLM_BASE_URL because "
+                                    "the local GEC model is unavailable on this server. This is NOT the evaluated checkpoint.")
+                else:
+                    model_ids["generator"] = load_models_config()["models"][gen_key]["hf_id"]
+                if checker is None and is_llm:
+                    model_ids["meaning_embedder"] = "not needed (no edit proposed)"
+                elif getattr(checker, "is_llm", False):
+                    model_ids["meaning_embedder"] = checker.name
+                    warnings.append(f"Meaning gate used the LLM judge ({checker.model}): an LLM-rated score, not E5 cosine; "
+                                    "the gate thresholds are uncalibrated for it. Number/negation checks still applied.")
+                else:
+                    model_ids["meaning_embedder"] = load_models_config()["models"]["embedder"]["hf_id"]
+                detail = None
+                if is_llm or getattr(checker, "is_llm", False):
+                    detail = (f"LLM fallback: generator={model_ids['generator']}, meaning_check={model_ids['meaning_embedder']}"
+                              f" (local checkpoint unavailable: {getattr(gen, 'local_failure', None) or f'no GEC checkpoint for {lang}'})")
+                trace.append(StageTrace(stage="generate+gate", status="ok", ms=round((time.perf_counter() - t0) * 1000, 1),
+                                        detail=detail))
             except ModelUnavailableError as e:
                 # FAIL CLOSED: if the generator or the meaning gate cannot run, apply nothing.
                 degraded, edits = True, []
                 warnings.append(f"O3 model component unavailable ({e.message}); no edits applied (fail-closed).")
-                trace.append(StageTrace(stage="generate+gate", status="failed", detail=e.message[:200]))
+                trace.append(StageTrace(stage="generate+gate", status="failed", detail=e.message[:300]))
 
         edits.sort(key=lambda e: (e.start, e.end))
         applied = [e for e in edits if e.gate_status != "rejected"]
@@ -179,7 +219,7 @@ class O3Controlled:
             abstained, why = True, "Meaning preservation could not be established for the proposed edits; text left unchanged."
         return CorrectionResult(abstained=abstained, abstain_reason=why,
             pipeline="o3", mode=mode, language=lang, language_detection=res_lang, source=text,
-            corrected=apply_edits(text, applied), edits=edits, capability=cap, degraded=degraded,
+            corrected=apply_edits(text, applied), edits=edits, capability=cap, degraded=degraded, engine=engine,
             warnings=warnings, trace=trace, model_ids=model_ids,
             latency_ms=round((time.perf_counter() - t_all) * 1000, 1),
         )

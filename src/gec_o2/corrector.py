@@ -13,7 +13,7 @@ from gec_common.align import apply_edits, extract_edits, spans_overlap
 from gec_common.config import language_capability, load_models_config
 from gec_common.errors import ModelUnavailableError
 from gec_common.langs import get_language, resolve_language
-from gec_common.runtime import get_seq2seq, script_consistent
+from gec_common.runtime import get_generator, script_consistent
 from gec_common.schemas import CapabilityInfo, CorrectionResult, Edit, Flag, Mode, StageTrace
 from gec_common.text import normalize, split_sentences
 
@@ -67,17 +67,29 @@ class O2Reference:
             warnings.append(f"Only the first {MAX_SENTENCES} sentences were processed.")
             spans = spans[:MAX_SENTENCES]
 
-        model_ok = self.use_model and gen_key is not None
+        # local checkpoint if it loads; otherwise the configured LLM fallback; otherwise rules only
+        gen = None
         model_failed = False
+        if self.use_model:
+            try:
+                gen = get_generator(gen_key, lang)
+            except ModelUnavailableError as e:
+                model_failed, degraded = True, True
+                warnings.append(f"Neural model unavailable ({e.message}); using rules only.")
+                trace.append(StageTrace(stage="generator", status="failed", detail=e.message[:200]))
+        is_llm = bool(getattr(gen, "is_llm", False))
+        if is_llm:
+            warnings.append(f"LLM fallback used: corrections come from {gen.model} via GEC_LLM_BASE_URL because the local "
+                            f"GEC model is unavailable on this server. This is NOT the evaluated checkpoint.")
         n_skipped = 0
         t_model = t_rules = 0.0
         for a, b in spans:
             sent = text[a:b]
             model_edits: list[Edit] = []
-            if model_ok and not model_failed:
+            if gen is not None and not model_failed:
                 t0 = time.perf_counter()
                 try:
-                    m = get_seq2seq(gen_key)
+                    m = gen
                     model_ids["generator"] = m.hf_id
                     if m.token_len(sent) > m.max_input_tokens:
                         n_skipped += 1
@@ -89,26 +101,36 @@ class O2Reference:
                             warnings.append("Model output rejected by safety guard (length/script); sentence left unchanged.")
                         elif out != sent:
                             for e in extract_edits(sent, out, lang, offset=a):
-                                e.source = f"model:{gen_key}"
-                                e.scores = {"seq_prob": round(math.exp(cand.score), 4)}
+                                if is_llm:  # no sequence probability exists for an LLM answer: record no fake one
+                                    e.source, e.scores = f"llm:{m.model}", {"llm_fallback": 1.0}
+                                else:
+                                    e.source = f"model:{gen_key}"
+                                    e.scores = {"seq_prob": round(math.exp(cand.score), 4)}
                                 model_edits.append(e)
                 except ModelUnavailableError as e:
                     model_failed, degraded = True, True
-                    warnings.append(f"Neural model unavailable ({e.message}); using rules only.")
-                    trace.append(StageTrace(stage="generator", status="failed", detail=e.message[:200]))
+                    warnings.append(f"{'LLM fallback' if is_llm else 'Neural model'} unavailable ({e.message}); using rules only.")
+                    trace.append(StageTrace(stage="generator", status="failed", detail=e.message[:300]))
                 t_model += time.perf_counter() - t0
             t0 = time.perf_counter()
-            rule_edits = [r for r in apply_rules(sent, lang, offset=a)
+            # extra grammar heuristics only when no generator corrected the text (keeps model runs unchanged)
+            rule_edits = [r for r in apply_rules(sent, lang, offset=a, grammar=gen is None or model_failed)
                           if not any(spans_overlap(r, m_) for m_ in model_edits)]
             t_rules += time.perf_counter() - t0
             edits.extend(model_edits + rule_edits)
 
-        if gen_key is None:
+        if gen_key is None and gen is None and not model_failed:
             trace.append(StageTrace(stage="generator", status="skipped",
                                     detail=f"no GEC checkpoint for {lang} (capability={cap.level})"))
         elif not model_failed:
+            detail = f"{n_skipped} over-long sentence(s) skipped" if n_skipped else None
+            if is_llm:
+                detail = (f"LLM fallback {gen.hf_id} (local checkpoint unavailable: "
+                          f"{gen.local_failure or f'no GEC checkpoint for {lang}'})")
             trace.append(StageTrace(stage="generator", status="degraded" if n_skipped else "ok", ms=round(t_model * 1000, 1),
-                                    detail=f"{n_skipped} over-long sentence(s) skipped" if n_skipped else None))
+                                    detail=detail))
+        engine = "llm_fallback" if is_llm and not model_failed else "local" if gen is not None and not model_failed \
+            else "rules_only"
         if n_skipped:
             warnings.append(f"{n_skipped} sentence(s) exceeded the model input limit and were not model-corrected.")
         trace.append(StageTrace(stage="rules", status="ok", ms=round(t_rules * 1000, 1)))
@@ -123,7 +145,10 @@ class O2Reference:
                 edits_spans = [(e.start, e.end) for e in edits]
                 flags = [f for f in flags if not any(s < f.end and f.start < e_ for s, e_ in edits_spans)]
                 model_ids["detector"] = load_models_config()["models"]["mlm_detector"]["hf_id"]
-            if rec.status == "failed":
+            if rec.status == "failed" and engine == "llm_fallback":
+                # the masked-LM detector needs the local models; the LLM fallback already covers error spans
+                rec.status, rec.detail = "skipped", f"MLM detector unavailable ({rec.detail}); LLM fallback active"
+            elif rec.status == "failed":
                 degraded = True
                 warnings.append("Error detector unavailable; no detection flags produced.")
 
@@ -131,7 +156,7 @@ class O2Reference:
         corrected = apply_edits(text, edits)
         return CorrectionResult(
             pipeline="o2", mode="reference", language=lang, language_detection=res_lang, source=text,
-            corrected=corrected, edits=edits, flags=flags, capability=cap, degraded=degraded,
+            corrected=corrected, edits=edits, flags=flags, capability=cap, degraded=degraded, engine=engine,
             warnings=warnings, trace=trace, model_ids=model_ids,
             latency_ms=round((time.perf_counter() - t_all) * 1000, 1),
         )

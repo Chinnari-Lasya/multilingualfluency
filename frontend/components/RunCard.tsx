@@ -55,7 +55,7 @@ function EditRow({ e, onChanged }: { e: Edit; onChanged: () => void }) {
       <div className="edit-head">
         <span className="chg">{e.original ? <del>{e.original}</del> : <em className="muted">{t("run.insert")}</em>} <span className="arrow">→</span> {e.replacement ? <ins>{e.replacement}</ins> : <em className="muted">{t("run.delete")}</em>}</span>
         <Chip tone="cat" title={e.rule_id ?? ""}>{label}</Chip>
-        <Chip tone="src">{e.source.startsWith("rule:") ? t("run.src.rule") : e.source.startsWith("model:") ? t("run.src.model") : e.source}</Chip>
+        <Chip tone="src" title={e.source}>{e.source.startsWith("rule:") ? t("run.src.rule") : e.source.startsWith("model:") ? t("run.src.model") : e.source.startsWith("llm:") ? t("run.src.llm") : e.source}</Chip>
         {e.gate_status === "accepted" && <Chip tone="ok">{t("run.gate.passed")}</Chip>}
         {e.gate_status === "rejected" && <Chip tone="bad">{t("run.gate.blocked")}</Chip>}
       </div>
@@ -107,7 +107,10 @@ export function RunCard({ run, title, subtitle, onChanged }: { run: Run; title: 
         <Chip tone="src">{t("run.applied", { n: applied })}</Chip>
         {run.abstained && <Chip tone="warn">{t("run.abstained")}</Chip>}
         {run.degraded && <Chip tone="bad">{t("run.degraded")}</Chip>}
+        {run.engine === "llm_fallback" && <Chip tone="warn" title={t("run.engine.llmTitle")}>{t("run.engine.llm", { m: (run.model_ids?.generator ?? "").replace(/^llm:/, "") })}</Chip>}
+        {run.engine === "rules_only" && <Chip tone="warn" title={t("run.engine.rulesTitle")}>{t("run.engine.rules")}</Chip>}
       </div>
+      {run.engine === "llm_fallback" && <p className="notice warn small">{t("run.engine.llmTitle")}</p>}
       {run.abstained && <p className="notice warn">{t("run.abstainedNote", { reason: run.abstain_reason ?? "" })}</p>}
       <h4>{t("run.corrected")}</h4>
       <p className="text lang-text corrected">{run.corrected}</p>
@@ -122,7 +125,7 @@ export function RunCard({ run, title, subtitle, onChanged }: { run: Run; title: 
       )}
       {!!oc?.edits_blocked_by_gates.length && <div className="notice"><b>{t("run.blockedOver")}</b> {oc.edits_blocked_by_gates.map((b, i) => <span key={i} className="lang-text"> {b.original || "∅"}→{b.replacement || "∅"} </span>)}</div>}
       {!!run.warnings?.length && <details><summary className="muted small">{t("run.warnings", { n: run.warnings.length })}</summary><ul>{run.warnings.map((w, i) => <li key={i} className="small">{w}</li>)}</ul></details>}
-      <details><summary className="muted small">{t("run.repro")}</summary><pre className="small">{JSON.stringify({ models: run.model_ids, trace: run.trace }, null, 2)}</pre></details>
+      <details><summary className="muted small">{t("run.repro")}</summary><pre className="small">{JSON.stringify({ engine: run.engine ?? "local", models: run.model_ids, trace: run.trace }, null, 2)}</pre></details>
     </section>
   );
 }

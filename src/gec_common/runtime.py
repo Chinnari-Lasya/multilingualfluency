@@ -221,6 +221,37 @@ def get_embedder(key: str = "embedder") -> SentenceEmbedder:
     return _REG.get(f"emb:{key}", lambda: SentenceEmbedder(key), _max_loaded() + 1)
 
 
+def get_generator(gen_key: str | None, lang: str):
+    """The local GEC checkpoint when it loads (unchanged behaviour). Only if it cannot be used - no checkpoint for
+    the language, or loading fails (e.g. PyTorch not installed) - the configured LLM fallback (llm_fallback.py).
+    Returns None when there is neither; re-raises the local failure when no fallback is configured."""
+    from .llm_fallback import llm_generator
+
+    if gen_key is not None:
+        try:
+            return get_seq2seq(gen_key)
+        except ModelUnavailableError as e:
+            fb = llm_generator(lang)
+            if fb is None:
+                raise
+            fb.local_failure = e.message
+            return fb
+    return llm_generator(lang)
+
+
+def get_meaning_checker():
+    """The local E5 embedder when it loads (unchanged behaviour), else the LLM meaning judge if configured."""
+    from .llm_fallback import llm_meaning_judge
+
+    try:
+        return get_embedder()
+    except ModelUnavailableError:
+        judge = llm_meaning_judge()
+        if judge is None:
+            raise
+        return judge
+
+
 def get_mlm(key: str = "mlm_detector"):
     """Returns (tokenizer, model, device) for a masked-LM."""
 

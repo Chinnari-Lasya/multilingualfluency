@@ -7,7 +7,7 @@ import threading
 from gec_common.align import tokenize
 from gec_common.config import thresholds
 from gec_common.errors import ModelUnavailableError
-from gec_common.runtime import get_embedder
+from gec_common.runtime import get_meaning_checker
 from gec_common.schemas import CorrectionResult
 from gec_o2.corrector import O2Reference
 from gec_o3.controlled import O3Controlled
@@ -26,12 +26,16 @@ def assess(res: CorrectionResult, embedder=None) -> dict:
         mp = {"status": "preserved", "similarity": 1.0, "note": "text unchanged"}
     else:
         try:
-            sim = round((embedder or get_embedder()).similarity(src, out), 4)
+            checker = embedder or get_meaning_checker()  # E5 locally; the LLM judge only when E5 cannot load
+            sim = round(checker.similarity(src, out), 4)
             viol = hard_violations(src, out, lang)
             status = "violated" if viol else ("preserved" if sim >= tau else "uncertain")
             mp = {"status": status, "similarity": sim, "threshold": tau, "hard_check_failures": viol}
-        except ModelUnavailableError:
-            mp = {"status": "not_checked", "note": "embedder unavailable"}
+            if getattr(checker, "is_llm", False):
+                mp["method"] = checker.name
+                mp["note"] = "LLM-rated meaning score (LLM fallback), not E5 cosine; threshold uncalibrated for it"
+        except ModelUnavailableError as e:
+            mp = {"status": "not_checked", "note": f"meaning checker unavailable ({e.message[:160]})"}
     applied = [e for e in res.edits if e.gate_status != "rejected"]
     rejected = [e for e in res.edits if e.gate_status == "rejected"]
     n_tok = max(1, len(tokenize(src, lang)))
