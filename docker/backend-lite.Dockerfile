@@ -14,6 +14,8 @@ RUN mkdir -p /models
 COPY pyproject.toml ./
 COPY src ./src
 RUN pip install -e ".[api]" alembic
+# Fail the build early if the PostgreSQL driver (psycopg[binary], from the `api` extra) is missing.
+RUN python -c "import psycopg, sqlalchemy; sqlalchemy.create_engine('postgresql+psycopg://u:p@h/db'); print('psycopg', psycopg.__version__, psycopg.pq.__impl__)"
 
 COPY configs ./configs
 COPY data ./data
