@@ -1,26 +1,27 @@
-# Render Blueprint: PostgreSQL + FastAPI backend (Docker, persistent model disk) + Next.js frontend.
-# Reuses docker/backend.Dockerfile unchanged. Local development is unaffected (see compose.yaml / README).
+# Render Blueprint (FREE tier): PostgreSQL + FastAPI backend (Docker, rules-only) + Next.js frontend.
+# Every service uses Render's free plan. The backend is built from docker/backend-lite.Dockerfile, which installs no
+# PyTorch/transformers, so no AI model is loaded and it fits in free-tier memory: O2 does rule-based fixes only and
+# O3 abstains. For the full neural system use docker/backend.Dockerfile on a larger plan with a model disk.
+# Free-tier notes: web services sleep after ~15 min idle (first request then takes ~1 min), and free Postgres
+# databases expire after 30 days unless upgraded.
+# Local development is unaffected (see compose.yaml / README).
 # Values marked `sync: false` are prompted for when the Blueprint is applied (never stored in git).
 
 databases:
   - name: gec-db
     databaseName: gec
     user: gec
-    plan: basic-256mb
+    plan: free
 
 services:
   # ------------------------------------------------------------------ backend / API
   - type: web
     name: gec-coach-api
     runtime: docker
-    dockerfilePath: ./docker/backend.Dockerfile
+    dockerfilePath: ./docker/backend-lite.Dockerfile
     dockerContext: .
-    plan: pro                      # 4 GB RAM: PyTorch + up to 3 loaded seq2seq models + XLM-R + embedder
+    plan: free                     # 512 MB RAM: rules-only, no AI models
     healthCheckPath: /api/v1/health
-    disk:
-      name: gec-models
-      mountPath: /models           # GEC_HOME=/models and HF_HOME=/models/hf_cache are set in the Dockerfile
-      sizeGB: 20
     envVars:
       - key: PORT
         value: "8000"              # the Dockerfile CMD binds 8000
@@ -30,8 +31,10 @@ services:
         generateValue: true
       - key: GEC_SEED_DEMO_USERS
         value: "0"                 # never seed learner/educator/admin demo accounts in production
+      - key: GEC_AUTO_DOWNLOAD
+        value: "0"                 # AI models are off: never download Hugging Face checkpoints
       - key: GEC_DOWNLOAD_TRANSLATOR
-        value: "1"                 # also download the NLLB translator (~2.5 GB) into the /models disk on first start
+        value: "0"                 # translator is off too (no disk, not enough memory)
       - key: GEC_ALLOW_ROLE_SELF_SELECT
         value: "0"                 # keep 0 in production: Admin is NEVER self-created (see the note below)
       - key: GEC_EDUCATOR_INVITE_CODE
@@ -49,7 +52,7 @@ services:
     name: gec-coach-web
     runtime: node
     rootDir: frontend
-    plan: starter
+    plan: free
     buildCommand: npm ci && npm run build
     startCommand: npx next start -p $PORT   # package.json's `start` is hard-wired to 3000; Render assigns $PORT
     envVars:
