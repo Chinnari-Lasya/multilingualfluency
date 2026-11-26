@@ -78,9 +78,6 @@ class O2Reference:
                 warnings.append(f"Neural model unavailable ({e.message}); using rules only.")
                 trace.append(StageTrace(stage="generator", status="failed", detail=e.message[:200]))
         is_llm = bool(getattr(gen, "is_llm", False))
-        if is_llm:
-            warnings.append(f"LLM fallback used: corrections come from {gen.model} via GEC_LLM_BASE_URL because the local "
-                            f"GEC model is unavailable on this server. This is NOT the evaluated checkpoint.")
         n_skipped = 0
         t_model = t_rules = 0.0
         for a, b in spans:
@@ -95,6 +92,7 @@ class O2Reference:
                         n_skipped += 1
                     else:
                         cand = m.generate(sent)[0]
+                        model_ids["generator"] = m.hf_id  # an LLM fallback may answer from a backup model
                         out = cand.text
                         ratio = len(out) / max(1, len(sent))
                         if not out or not (0.5 <= ratio <= 2.0) or not script_consistent(sent, out):
@@ -131,6 +129,9 @@ class O2Reference:
                                     detail=detail))
         engine = "llm_fallback" if is_llm and not model_failed else "local" if gen is not None and not model_failed \
             else "rules_only"
+        if engine == "llm_fallback":
+            warnings.append(f"LLM fallback used: corrections come from {gen.model} via GEC_LLM_BASE_URL because the local "
+                            f"GEC model is unavailable on this server. This is NOT the evaluated checkpoint.")
         if n_skipped:
             warnings.append(f"{n_skipped} sentence(s) exceeded the model input limit and were not model-corrected.")
         trace.append(StageTrace(stage="rules", status="ok", ms=round(t_rules * 1000, 1)))

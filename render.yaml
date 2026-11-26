@@ -49,7 +49,9 @@ services:
       # TRANSLATION + CORRECTION FALLBACK: the local models cannot run on the free plan (no PyTorch, 512 MB), so
       # translation, and O2/O3 correction plus O3's meaning check, use Google Gemini's free OpenAI-compatible API.
       # Every such result is labelled engine=llm_fallback in the UI and trace. GEC_LLM_PROVIDER above (explanations)
-      # stays none. Set GEC_LLM_FALLBACK=off to go back to rules-only correction.
+      # stays none. Set GEC_LLM_FALLBACK=off to go back to rules-only correction. On 429 (quota) / 503 (overload)
+      # the app moves on to backup models: GEC_LLM_BACKUP_MODELS (comma-separated), default for Google endpoints:
+      # gemini-3.5-flash-lite, gemini-3.1-flash-lite.
       - key: GEC_LLM_FALLBACK
         value: auto
       - key: GEC_TRANSLATION_PROVIDER

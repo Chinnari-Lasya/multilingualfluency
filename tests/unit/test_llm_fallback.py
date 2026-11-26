@@ -8,7 +8,7 @@ import httpx
 import pytest
 
 import gec_common.llm_fallback as fb
-from gec_common.errors import ModelUnavailableError
+from gec_common.errors import ModelUnavailableError, TranslationUnavailableError
 from gec_common.runtime import clear_models, register_override
 from gec_o2.corrector import O2Reference
 from gec_o2.rules import apply_rules
@@ -153,10 +153,60 @@ def test_fallback_off_or_unconfigured_keeps_previous_behaviour(llm):
 def test_translation_error_shows_provider_reason(llm):
     fb._TRANSPORT, _ = _server({}, status=400)
     p = OpenAICompatibleProvider(transport=fb._TRANSPORT)
-    with pytest.raises(Exception) as ei:
+    with pytest.raises(TranslationUnavailableError) as ei:
         translate("I go to school.", "en", "hi", provider=p)
     msg = ei.value.message
     assert "HTTP 400" in msg and "API key not valid" in msg and "gemini-test" in msg and "secret" not in msg
+
+
+def _per_model(statuses: dict):
+    """Server answering each model with its own status (200 = a valid translation/correction)."""
+    seen = []
+
+    def handler(req: httpx.Request):
+        model = json.loads(req.content)["model"]
+        seen.append(model)
+        st = statuses.get(model, 200)
+        if st != 200:
+            return httpx.Response(st, json={"error": {"code": st, "message": f"{model} says {st}"}})
+        return httpx.Response(200, json={"choices": [{"message": {"content": "मैं स्कूल जाता हूँ।"}}]})
+
+    return httpx.MockTransport(handler), seen
+
+
+def test_quota_or_overload_moves_to_backup_model_and_reports_it(llm, monkeypatch):
+    monkeypatch.setattr(fb.time, "sleep", lambda s: None)
+    llm.setenv("GEC_LLM_BACKUP_MODELS", "backup-a, backup-b")
+    t, seen = _per_model({"gemini-test": 429, "backup-a": 503})
+    out = translate("I go to school.", "en", "hi", provider=OpenAICompatibleProvider(transport=t))
+    assert out["translation"] == "मैं स्कूल जाता हूँ।" and out["model"] == "backup-b"
+    assert seen[:2] == ["gemini-test", "backup-a"] and seen[-1] == "backup-b"
+
+
+def test_every_model_failing_lists_each_reason(llm, monkeypatch):
+    monkeypatch.setattr(fb.time, "sleep", lambda s: None)
+    llm.setenv("GEC_LLM_BACKUP_MODELS", "backup-a")
+    t, _ = _per_model({"gemini-test": 429, "backup-a": 503})
+    with pytest.raises(TranslationUnavailableError) as ei:
+        translate("I go to school.", "en", "hi", provider=OpenAICompatibleProvider(transport=t))
+    msg = ei.value.message
+    assert "gemini-test: HTTP 429" in msg and "backup-a: HTTP 503" in msg
+
+
+def test_auth_error_does_not_try_other_models(llm):
+    llm.setenv("GEC_LLM_BACKUP_MODELS", "backup-a")
+    t, seen = _per_model({"gemini-test": 401})
+    with pytest.raises(TranslationUnavailableError):
+        translate("I go to school.", "en", "hi", provider=OpenAICompatibleProvider(transport=t))
+    assert seen == ["gemini-test"]
+
+
+def test_google_endpoint_gets_default_backup_models(llm):
+    llm.setenv("GEC_LLM_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai")
+    s = fb.endpoint_settings()
+    assert s["models"][0] == "gemini-test" and list(s["models"][1:]) == list(fb.GOOGLE_BACKUP_MODELS)
+    llm.setenv("GEC_LLM_BACKUP_MODELS", "")
+    assert fb.endpoint_settings()["models"] == ["gemini-test"]
 
 
 @pytest.mark.parametrize("src,out", [
